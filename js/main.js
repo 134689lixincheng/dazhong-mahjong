@@ -12,7 +12,7 @@ import {
 } from "./localSolo.js";
 import { createDuoHost, createDuoGuest } from "./duoP2p.js";
 import { createDuoWs } from "./duoWs.js";
-import { getWsUrl, setWsUrl, sameOriginWs, isLikelyStaticHost } from "./netConfig.js";
+import { getWsUrl, sameOriginWs, isLikelyStaticHost, wakeRelay } from "./netConfig.js";
 import { getBlunderRate } from "./aiConfig.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -41,11 +41,13 @@ function isDuoNet() {
   return Boolean(duoSession);
 }
 
-/** 有加速节点 / 本机开服 → WebSocket；否则 PeerJS */
+/** 有 ?ws= → 指定节点；本机开服 → 同源；线上 → 默认 Render；否则 PeerJS */
 function resolveDuoTransport() {
-  const custom = getWsUrl();
-  if (custom) return { kind: "ws", url: custom };
+  const q = new URLSearchParams(location.search).get("ws");
+  if (q) return { kind: "ws", url: getWsUrl() };
   if (!isLikelyStaticHost()) return { kind: "ws", url: sameOriginWs() };
+  const cloud = getWsUrl();
+  if (cloud) return { kind: "ws", url: cloud };
   return { kind: "p2p" };
 }
 
@@ -370,6 +372,42 @@ $("#btn-start-solo").addEventListener("click", async () => {
   }
 });
 
+async function startDuoAsWs(url, { mode, code }) {
+  void wakeRelay(url);
+  const session = createDuoWs({
+    url,
+    quick: true,
+    onLobby: applyDuoLobby,
+    onState: applyDuoState,
+    onError: (m) => setErr(m),
+  });
+  if (mode === "create") await session.create(nick(), getBlunderRate());
+  else await session.join(code, nick());
+  return session;
+}
+
+async function startDuoAsP2p({ mode, code }) {
+  if (mode === "create") {
+    const session = createDuoHost({
+      name: nick(),
+      onLobby: applyDuoLobby,
+      onState: applyDuoState,
+      onError: (m) => setErr(m),
+    });
+    await session.start();
+    return session;
+  }
+  const session = createDuoGuest({
+    code,
+    name: nick(),
+    onLobby: applyDuoLobby,
+    onState: applyDuoState,
+    onError: (m) => setErr(m),
+  });
+  await session.start();
+  return session;
+}
+
 $("#btn-create").addEventListener("click", async () => {
   setErr("");
   try {
@@ -377,26 +415,22 @@ $("#btn-create").addEventListener("click", async () => {
     duoSession?.destroy();
     const t = resolveDuoTransport();
     if (t.kind === "ws") {
-      duoSession = createDuoWs({
-        url: t.url,
-        onLobby: applyDuoLobby,
-        onState: applyDuoState,
-        onError: (m) => setErr(m),
-      });
-      await duoSession.create(nick(), getBlunderRate());
-      showWaiting();
-      return;
+      setErr("正在创建房间…");
+      try {
+        duoSession = await startDuoAsWs(t.url, { mode: "create" });
+        setErr("");
+        showWaiting();
+        return;
+      } catch (e) {
+        console.warn("ws create failed, fallback p2p", e);
+        setErr("云端联机暂不可用，改用点对点…");
+      }
     }
-    duoSession = createDuoHost({
-      name: nick(),
-      onLobby: applyDuoLobby,
-      onState: applyDuoState,
-      onError: (m) => setErr(m),
-    });
-    await duoSession.start();
+    duoSession = await startDuoAsP2p({ mode: "create" });
+    setErr("");
     showWaiting();
   } catch (e) {
-    setErr(e.message || "创建房间失败");
+    setErr(e.message || "创建房间失败，请再试一次");
     duoSession?.destroy();
     duoSession = null;
   }
@@ -414,27 +448,22 @@ $("#btn-join").addEventListener("click", async () => {
     duoSession?.destroy();
     const t = resolveDuoTransport();
     if (t.kind === "ws") {
-      duoSession = createDuoWs({
-        url: t.url,
-        onLobby: applyDuoLobby,
-        onState: applyDuoState,
-        onError: (m) => setErr(m),
-      });
-      await duoSession.join(code, nick());
-      showWaiting();
-      return;
+      setErr("正在加入…");
+      try {
+        duoSession = await startDuoAsWs(t.url, { mode: "join", code });
+        setErr("");
+        showWaiting();
+        return;
+      } catch (e) {
+        console.warn("ws join failed, fallback p2p", e);
+        setErr("云端加入失败，尝试点对点…");
+      }
     }
-    duoSession = createDuoGuest({
-      code,
-      name: nick(),
-      onLobby: applyDuoLobby,
-      onState: applyDuoState,
-      onError: (m) => setErr(m),
-    });
-    await duoSession.start();
+    duoSession = await startDuoAsP2p({ mode: "join", code });
+    setErr("");
     showWaiting();
   } catch (e) {
-    setErr(e.message || "加入失败");
+    setErr(e.message || "加入失败：请确认房主在线、房间码正确，且双方用同一网站");
     duoSession?.destroy();
     duoSession = null;
   }
@@ -487,3 +516,11 @@ $("#btn-next").addEventListener("click", async () => {
 });
 
 $(".mode-btn[data-mode='duo'] .mode-hint").textContent = "创建房间，发给队友 · 两名 AI";
+
+// 打开大厅时预热联机服务（Render 免费机会休眠）
+try {
+  localStorage.removeItem("mahjong_ws_url");
+} catch {}
+if (isLikelyStaticHost() && getWsUrl()) {
+  void wakeRelay();
+}
