@@ -7,13 +7,15 @@
   --shadow: rgba(0, 0, 0, 0.35);
   --font-display: "KaiTi", "STKaiti", "Songti SC", serif;
   --font-body: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-  /* 横屏一排：按视口宽度自适应，保证 14 张一手排开 */
-  --tile-w: clamp(28px, 3.6vw, 48px);
+  /* 横屏一手一排：手牌参考欢乐麻将放大，对手/弃牌保持较小 */
+  --tile-w: clamp(44px, 5.8vw, 72px);
   --tile-h: calc(var(--tile-w) * 1.38);
-  --tile-sm-w: clamp(18px, 2.2vw, 30px);
+  --tile-sm-w: clamp(22px, 2.5vw, 34px);
   --tile-sm-h: calc(var(--tile-sm-w) * 1.38);
-  --tile-xs-w: clamp(14px, 1.7vw, 22px);
+  --tile-xs-w: clamp(16px, 1.9vw, 26px);
   --tile-xs-h: calc(var(--tile-xs-w) * 1.38);
+  --tile-hand-w: clamp(52px, 6.8vw, 88px);
+  --tile-hand-h: calc(var(--tile-hand-w) * 1.38);
 }
 
 *,
@@ -412,7 +414,7 @@ body {
   inset: 10px;
   display: grid;
   grid-template-columns: minmax(88px, 14%) minmax(0, 1fr) minmax(88px, 14%);
-  grid-template-rows: minmax(72px, 20%) minmax(0, 1fr) minmax(96px, 26%);
+  grid-template-rows: minmax(64px, 16%) minmax(0, 1fr) minmax(120px, 30%);
   grid-template-areas:
     ". top ."
     "left center right"
@@ -446,10 +448,12 @@ body {
 
 .seat-bottom {
   grid-area: bottom;
+  grid-column: 1 / -1;
   align-self: end;
   justify-self: center;
   width: 100%;
   max-width: 100%;
+  z-index: 2;
 }
 
 .center-board {
@@ -661,12 +665,29 @@ body {
 }
 
 .seat-bottom .hand-row.self {
-  gap: 3px;
-  padding: 0.2rem 0.4rem 0.3rem;
+  gap: 2px;
+  padding: 0.15rem 0.5rem 0.25rem;
   flex-wrap: nowrap;
   justify-content: center;
   width: 100%;
-  overflow-x: auto;
+  overflow-x: visible;
+  min-height: var(--tile-hand-h);
+}
+
+/* 自己手牌：放大到接近参考图比例，末张（摸进）略分开 */
+.seat-bottom .hand-row.self .mj-tile,
+.seat-bottom .hand-row.self .mj-tile.mj-md {
+  width: var(--tile-hand-w);
+  height: var(--tile-hand-h);
+}
+
+.seat-bottom .hand-row.self .mj-tile:last-child {
+  margin-left: 0.55rem;
+}
+
+.seat-bottom .hand-row.self .mj-tile.clickable:hover,
+.seat-bottom .hand-row.self .mj-tile.selected {
+  transform: translateY(-14px);
 }
 
 .bottom-info {
@@ -800,21 +821,27 @@ body {
 /* 宽屏横排再放大一点牌 */
 @media (min-aspect-ratio: 16/10) and (min-width: 1100px) {
   :root {
-    --tile-w: clamp(36px, 3.8vw, 52px);
-    --tile-sm-w: clamp(22px, 2.4vw, 32px);
-    --tile-xs-w: clamp(16px, 1.8vw, 24px);
+    --tile-w: clamp(48px, 5.2vw, 70px);
+    --tile-hand-w: clamp(60px, 6.8vw, 92px);
+    --tile-sm-w: clamp(24px, 2.4vw, 36px);
+    --tile-xs-w: clamp(18px, 1.8vw, 26px);
   }
 
   .table-compass {
     grid-template-columns: minmax(100px, 12%) minmax(0, 1fr) minmax(100px, 12%);
-    grid-template-rows: minmax(80px, 18%) minmax(0, 1fr) minmax(110px, 24%);
+    grid-template-rows: minmax(70px, 15%) minmax(0, 1fr) minmax(140px, 32%);
   }
 }
 
 @media (max-height: 500px) {
   :root {
-    --tile-w: clamp(24px, 3.2vw, 40px);
+    --tile-w: clamp(32px, 4.5vw, 48px);
+    --tile-hand-w: clamp(36px, 5.2vw, 56px);
     --tile-sm-w: clamp(16px, 2vw, 26px);
+  }
+
+  .table-compass {
+    grid-template-rows: minmax(56px, 16%) minmax(0, 1fr) minmax(88px, 28%);
   }
 
   .topbar {
