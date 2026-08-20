@@ -34,6 +34,11 @@ node scripts/verify-duo.mjs ws://127.0.0.1:5173
 
 ## 改进日志
 
+### 2026-08-21（手牌放大）
+
+- 参考欢乐麻将：自己手牌加大（约 `6.8vw`，末张摸进略分开），底栏通栏排开
+- 对手/弃牌保持较小，避免桌面挤满
+
 ### 2026-08-21（更新联机节点）
 
 - 默认 WSS 改为 `wss://dazhong-mahjong-dwkm.onrender.com`
@@ -55,6 +60,7 @@ node scripts/verify-duo.mjs ws://127.0.0.1:5173
 
 | 日期 | 项目 | 结果 | 备注 |
 |------|------|------|------|
+| 2026-08-21 | 手牌放大（1280×720） | ✅ | 手牌约 79–88×110+，底栏通栏无横向滚动条 |
 | 2026-08-21 | `verify-duo.mjs` → `wss://dazhong-mahjong-dwkm.onrender.com` | ✅ PASS | create `BXG8T` + join seat 2 |
 | 2026-08-21 | 单人 `createLocalSolo` | ✅ PASS | `phase=draw`，手牌 13 |
 | 2026-08-21 | `verify-duo.mjs` → `ws://127.0.0.1:5173` | ✅ PASS | create + join seat 2 |
