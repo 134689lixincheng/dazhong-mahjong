@@ -10,6 +10,7 @@ import {
   localJiaGang,
   localNext,
 } from "./localSolo.js";
+import { createDuoHost, createDuoGuest } from "./duoP2p.js";
 import { getBlunderRate } from "./aiConfig.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -17,19 +18,13 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 const WIND_NAMES = ["东", "南", "西", "北"];
 
-/** 静态托管（Vercel 等）无 WebSocket 服务时，双人不可用 */
-const STATIC_HOST =
-  location.hostname.includes("vercel.app") ||
-  location.hostname.includes("github.io") ||
-  location.protocol === "file:";
-
-let ws = null;
 let mySeat = 0;
 let roomInfo = null;
 let state = null;
 let selectedMode = "solo";
 let selectedTile = null;
 let localSession = null; // 纯前端单人
+let duoSession = null; // P2P 双人
 
 const lobby = $("#lobby");
 const waiting = $("#waiting");
@@ -40,50 +35,8 @@ function isLocal() {
   return Boolean(localSession);
 }
 
-function wsUrl() {
-  const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  return `${proto}//${location.host}`;
-}
-
-function connect() {
-  return new Promise((resolve, reject) => {
-    if (ws && ws.readyState === 1) {
-      resolve(ws);
-      return;
-    }
-    const socket = new WebSocket(wsUrl());
-    const timer = setTimeout(() => {
-      try {
-        socket.close();
-      } catch {}
-      reject(new Error("连接超时"));
-    }, 4000);
-    socket.addEventListener("open", () => {
-      clearTimeout(timer);
-      ws = socket;
-      resolve(socket);
-    });
-    socket.addEventListener("error", () => {
-      clearTimeout(timer);
-      reject(new Error("无法连接服务器"));
-    });
-    socket.addEventListener("close", () => {
-      if (ws === socket) ws = null;
-    });
-    socket.addEventListener("message", (ev) => {
-      let msg;
-      try {
-        msg = JSON.parse(ev.data);
-      } catch {
-        return;
-      }
-      onMessage(msg);
-    });
-  });
-}
-
-function send(msg) {
-  if (ws?.readyState === 1) ws.send(JSON.stringify(msg));
+function isDuoNet() {
+  return Boolean(duoSession);
 }
 
 function setErr(text) {
@@ -129,29 +82,23 @@ function syncLocalState() {
   else resultModal.classList.add("hidden");
 }
 
-function onMessage(msg) {
-  if (msg.type === "error") {
-    setErr(msg.message);
-    return;
+function applyDuoLobby(room, seat) {
+  mySeat = seat;
+  roomInfo = room;
+  if (room.status === "lobby") {
+    renderWaiting();
+    showWaiting();
   }
-  if (msg.type === "room") {
-    mySeat = msg.seat;
-    roomInfo = msg.room;
-    if (msg.room.status === "lobby") {
-      renderWaiting();
-      showWaiting();
-    }
-    return;
-  }
-  if (msg.type === "state") {
-    mySeat = msg.seat;
-    roomInfo = msg.room;
-    state = msg.state;
-    showTable();
-    render();
-    if (state.phase === "result") showResult();
-    else resultModal.classList.add("hidden");
-  }
+}
+
+function applyDuoState(st, room, seat) {
+  mySeat = seat;
+  roomInfo = room;
+  state = st;
+  showTable();
+  render();
+  if (state.phase === "result") showResult();
+  else resultModal.classList.add("hidden");
 }
 
 function renderWaiting() {
@@ -329,7 +276,10 @@ async function doDiscard(tile) {
     await runLocalLoop(localSession, syncLocalState);
     return;
   }
-  send({ type: "action", action: "discard", tile });
+  if (isDuoNet()) {
+    if (duoSession.role === "host") duoSession.localAction({ action: "discard", tile });
+    else duoSession.sendAction({ action: "discard", tile });
+  }
 }
 
 async function onClaim(opt) {
@@ -339,7 +289,10 @@ async function onClaim(opt) {
     await runLocalLoop(localSession, syncLocalState);
     return;
   }
-  send({ type: "action", action: "claim", claim: opt });
+  if (isDuoNet()) {
+    if (duoSession.role === "host") duoSession.localAction({ action: "claim", claim: opt });
+    else duoSession.sendAction({ action: "claim", claim: opt });
+  }
 }
 
 async function onTurnAction(a) {
@@ -351,9 +304,16 @@ async function onTurnAction(a) {
     if (localSession.game.phase !== "result") await runLocalLoop(localSession, syncLocalState);
     return;
   }
-  if (a.type === "hu") send({ type: "action", action: "zimo" });
-  else if (a.type === "angang") send({ type: "action", action: "angang", tile: a.tile });
-  else if (a.type === "jiagang") send({ type: "action", action: "jiagang", tile: a.tile });
+  if (isDuoNet()) {
+    const payload =
+      a.type === "hu"
+        ? { action: "zimo" }
+        : a.type === "angang"
+          ? { action: "angang", tile: a.tile }
+          : { action: "jiagang", tile: a.tile };
+    if (duoSession.role === "host") duoSession.localAction(payload);
+    else duoSession.sendAction(payload);
+  }
 }
 
 async function startLocalSolo() {
@@ -385,15 +345,11 @@ $$(".mode-btn").forEach((btn) => {
     $("#duo-panel").classList.toggle("hidden", selectedMode !== "duo");
     $("#btn-start-solo").classList.toggle("hidden", selectedMode !== "solo");
     setErr("");
-    if (selectedMode === "duo" && STATIC_HOST) {
-      setErr("当前为静态站点，双人异地需自建 WebSocket 服务（npm start）");
-    }
   });
 });
 
 $("#btn-start-solo").addEventListener("click", async () => {
   setErr("");
-  // 优先纯前端，保证 Vercel 可玩；有本地服务时也可用前端单人
   try {
     await startLocalSolo();
   } catch (e) {
@@ -403,40 +359,54 @@ $("#btn-start-solo").addEventListener("click", async () => {
 
 $("#btn-create").addEventListener("click", async () => {
   setErr("");
-  if (STATIC_HOST) {
-    setErr("Vercel 静态站不支持双人房间，请本地 npm start 开服");
-    return;
-  }
   try {
-    await connect();
     localSession = null;
-    send({ type: "create", mode: "duo", name: nick(), blunderRate: getBlunderRate() });
+    duoSession?.destroy();
+    duoSession = createDuoHost({
+      name: nick(),
+      onLobby: applyDuoLobby,
+      onState: applyDuoState,
+      onError: (m) => setErr(m),
+    });
+    await duoSession.start();
+    showWaiting();
   } catch (e) {
-    setErr(e.message + "（双人模式需要 WebSocket 服务）");
+    setErr(e.message || "创建房间失败（需可访问外网）");
+    duoSession?.destroy();
+    duoSession = null;
   }
 });
 
 $("#btn-join").addEventListener("click", async () => {
   setErr("");
-  if (STATIC_HOST) {
-    setErr("Vercel 静态站不支持加入房间");
-    return;
-  }
   const code = $("#room-code").value.trim();
   if (!code) {
     setErr("请输入房间码");
     return;
   }
   try {
-    await connect();
     localSession = null;
-    send({ type: "join", code, name: nick() });
+    duoSession?.destroy();
+    duoSession = createDuoGuest({
+      code,
+      name: nick(),
+      onLobby: applyDuoLobby,
+      onState: applyDuoState,
+      onError: (m) => setErr(m),
+    });
+    await duoSession.start();
+    showWaiting();
   } catch (e) {
-    setErr(e.message);
+    setErr(e.message || "加入失败");
+    duoSession?.destroy();
+    duoSession = null;
   }
 });
 
-$("#btn-ready").addEventListener("click", () => send({ type: "ready", name: nick() }));
+$("#btn-ready").addEventListener("click", () => {
+  if (!duoSession) return;
+  duoSession.setReady(nick());
+});
 
 $("#btn-copy").addEventListener("click", async () => {
   if (!roomInfo?.code) return;
@@ -454,11 +424,8 @@ $("#btn-copy").addEventListener("click", async () => {
 function leaveAll() {
   if (localSession) localSession.alive = false;
   localSession = null;
-  send({ type: "leave" });
-  try {
-    ws?.close();
-  } catch {}
-  ws = null;
+  duoSession?.destroy();
+  duoSession = null;
   state = null;
   roomInfo = null;
   selectedTile = null;
@@ -477,10 +444,11 @@ $("#btn-next").addEventListener("click", async () => {
     await runLocalLoop(localSession, syncLocalState);
     return;
   }
-  send({ type: "action", action: "next" });
+  if (isDuoNet()) {
+    if (duoSession.role === "host") duoSession.localAction({ action: "next" });
+    else duoSession.sendAction({ action: "next" });
+  }
 });
 
-// 静态站提示
-if (STATIC_HOST) {
-  $(".mode-btn[data-mode='duo'] .mode-hint").textContent = "需自建服务 · 本站仅支持单人";
-}
+$(".mode-btn[data-mode='duo'] .mode-hint").textContent =
+  "点对点联机 · 无需开服务器 · 两名 AI";

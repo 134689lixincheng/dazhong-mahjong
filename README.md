@@ -6,21 +6,22 @@
 
 ## 在线游玩
 
-部署在 Vercel 后，打开站点即可 **单人 vs 电脑**。
+打开 https://dazhong-mahjong.vercel.app 即可：
 
-> 双人异地组队依赖 WebSocket，需本机或其它 Node 主机运行 `npm start`，Vercel 静态托管不支持。
+- **单人**：浏览器本地对战 AI
+- **双人**：创建/加入房间，点对点联机（PeerJS），**无需** `npm start`
+
+后台：https://dazhong-mahjong.vercel.app/admin （默认密码 `8888`）
 
 ## 本地运行
 
+直接用静态服务器打开即可，例如：
+
 ```bash
-npm install
-npm start
+npx --yes serve -l 5173 .
 ```
 
-打开 http://localhost:5173
-
-- 单人：纯前端也可玩（不连服务器）
-- 双人：需上述 Node 服务，创建/加入房间
+可选：`npm start` 仍可启动旧版 WebSocket 服（一般已不需要）。
 
 ## 部署 Vercel
 
