@@ -14,6 +14,36 @@ import {
 } from "./game.js";
 import { getBlunderRate } from "./aiConfig.js";
 
+/** 国内友好 ICE；Peer 云信令仍在国外，有加速节点时请改用 WebSocket */
+const ICE_CONFIG = {
+  iceServers: [
+    { urls: "stun:stun.qq.com" },
+    { urls: "stun:stun.miwifi.com" },
+    { urls: "stun:stun.chat.bilibili.com" },
+    { urls: "stun:stun.l.google.com:19302" },
+  ],
+};
+
+let PeerCtor = null;
+
+async function loadPeer() {
+  if (PeerCtor) return PeerCtor;
+  if (globalThis.Peer) {
+    PeerCtor = globalThis.Peer;
+    return PeerCtor;
+  }
+  await new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = new URL("../vendor/peerjs.min.js", import.meta.url).href;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error("PeerJS 加载失败"));
+    document.head.appendChild(s);
+  });
+  PeerCtor = globalThis.Peer;
+  if (!PeerCtor) throw new Error("PeerJS 未就绪");
+  return PeerCtor;
+}
+
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -178,8 +208,8 @@ export function createDuoHost({ name, onState, onLobby, onError }) {
   }
 
   async function start() {
-    const { default: Peer } = await import("https://esm.sh/peerjs@1.5.4");
-    peer = new Peer(peerId, { debug: 1 });
+    const Peer = await loadPeer();
+    peer = new Peer(peerId, { debug: 1, config: ICE_CONFIG });
     await new Promise((resolve, reject) => {
       peer.on("open", resolve);
       peer.on("error", reject);
@@ -264,8 +294,8 @@ export function createDuoGuest({ code, name, onState, onLobby, onError }) {
   }
 
   async function start() {
-    const { default: Peer } = await import("https://esm.sh/peerjs@1.5.4");
-    peer = new Peer({ debug: 1 });
+    const Peer = await loadPeer();
+    peer = new Peer({ debug: 1, config: ICE_CONFIG });
     await new Promise((resolve, reject) => {
       peer.on("open", resolve);
       peer.on("error", reject);

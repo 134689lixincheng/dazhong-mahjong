@@ -5,8 +5,8 @@
   --accent-2: #d4a017;
   --cream: #f3e6c8;
   --shadow: rgba(0, 0, 0, 0.35);
-  --font-display: "Ma Shan Zheng", "KaiTi", serif;
-  --font-body: "Noto Sans SC", "PingFang SC", sans-serif;
+  --font-display: "KaiTi", "STKaiti", "Songti SC", serif;
+  --font-body: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   /* 横屏一排：按视口宽度自适应，保证 14 张一手排开 */
   --tile-w: clamp(28px, 3.6vw, 48px);
   --tile-h: calc(var(--tile-w) * 1.38);
@@ -145,6 +145,17 @@ body {
 
 .duo-panel {
   margin-top: 1rem;
+}
+
+.ws-field {
+  margin-bottom: 0.35rem;
+}
+
+.ws-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: rgba(243, 230, 200, 0.45);
 }
 
 .or-line {

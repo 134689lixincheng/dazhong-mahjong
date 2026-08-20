@@ -388,6 +388,6 @@ wss.on("connection", (ws) => {
   ws.on("close", () => detachClient(ws));
 });
 
-server.listen(PORT, () => {
-  console.log(`大众麻将服务器 http://localhost:${PORT}`);
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`大众麻将服务器 http://0.0.0.0:${PORT}`);
 });

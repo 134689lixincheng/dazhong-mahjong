@@ -11,6 +11,8 @@ import {
   localNext,
 } from "./localSolo.js";
 import { createDuoHost, createDuoGuest } from "./duoP2p.js";
+import { createDuoWs } from "./duoWs.js";
+import { getWsUrl, setWsUrl, sameOriginWs, isLikelyStaticHost } from "./netConfig.js";
 import { getBlunderRate } from "./aiConfig.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -37,6 +39,20 @@ function isLocal() {
 
 function isDuoNet() {
   return Boolean(duoSession);
+}
+
+/** 有加速节点 / 本机开服 → WebSocket；否则 PeerJS */
+function resolveDuoTransport() {
+  const custom = getWsUrl();
+  if (custom) return { kind: "ws", url: custom };
+  if (!isLikelyStaticHost()) return { kind: "ws", url: sameOriginWs() };
+  return { kind: "p2p" };
+}
+
+function duoSend(payload) {
+  if (!duoSession) return;
+  if (duoSession.role === "host") duoSession.localAction(payload);
+  else duoSession.sendAction(payload);
 }
 
 function setErr(text) {
@@ -277,8 +293,7 @@ async function doDiscard(tile) {
     return;
   }
   if (isDuoNet()) {
-    if (duoSession.role === "host") duoSession.localAction({ action: "discard", tile });
-    else duoSession.sendAction({ action: "discard", tile });
+    duoSend({ action: "discard", tile });
   }
 }
 
@@ -290,8 +305,7 @@ async function onClaim(opt) {
     return;
   }
   if (isDuoNet()) {
-    if (duoSession.role === "host") duoSession.localAction({ action: "claim", claim: opt });
-    else duoSession.sendAction({ action: "claim", claim: opt });
+    duoSend({ action: "claim", claim: opt });
   }
 }
 
@@ -311,8 +325,7 @@ async function onTurnAction(a) {
         : a.type === "angang"
           ? { action: "angang", tile: a.tile }
           : { action: "jiagang", tile: a.tile };
-    if (duoSession.role === "host") duoSession.localAction(payload);
-    else duoSession.sendAction(payload);
+    duoSend(payload);
   }
 }
 
@@ -359,9 +372,23 @@ $("#btn-start-solo").addEventListener("click", async () => {
 
 $("#btn-create").addEventListener("click", async () => {
   setErr("");
+  const input = $("#ws-url");
+  if (input) setWsUrl(input.value);
   try {
     localSession = null;
     duoSession?.destroy();
+    const t = resolveDuoTransport();
+    if (t.kind === "ws") {
+      duoSession = createDuoWs({
+        url: t.url,
+        onLobby: applyDuoLobby,
+        onState: applyDuoState,
+        onError: (m) => setErr(m),
+      });
+      await duoSession.create(nick(), getBlunderRate());
+      showWaiting();
+      return;
+    }
     duoSession = createDuoHost({
       name: nick(),
       onLobby: applyDuoLobby,
@@ -371,7 +398,7 @@ $("#btn-create").addEventListener("click", async () => {
     await duoSession.start();
     showWaiting();
   } catch (e) {
-    setErr(e.message || "创建房间失败（需可访问外网）");
+    setErr(e.message || "创建房间失败");
     duoSession?.destroy();
     duoSession = null;
   }
@@ -379,6 +406,8 @@ $("#btn-create").addEventListener("click", async () => {
 
 $("#btn-join").addEventListener("click", async () => {
   setErr("");
+  const input = $("#ws-url");
+  if (input) setWsUrl(input.value);
   const code = $("#room-code").value.trim();
   if (!code) {
     setErr("请输入房间码");
@@ -387,6 +416,18 @@ $("#btn-join").addEventListener("click", async () => {
   try {
     localSession = null;
     duoSession?.destroy();
+    const t = resolveDuoTransport();
+    if (t.kind === "ws") {
+      duoSession = createDuoWs({
+        url: t.url,
+        onLobby: applyDuoLobby,
+        onState: applyDuoState,
+        onError: (m) => setErr(m),
+      });
+      await duoSession.join(code, nick());
+      showWaiting();
+      return;
+    }
     duoSession = createDuoGuest({
       code,
       name: nick(),
@@ -406,6 +447,11 @@ $("#btn-join").addEventListener("click", async () => {
 $("#btn-ready").addEventListener("click", () => {
   if (!duoSession) return;
   duoSession.setReady(nick());
+});
+
+$("#btn-save-ws")?.addEventListener("click", () => {
+  const v = setWsUrl($("#ws-url")?.value || "");
+  setErr(v ? `已保存加速节点：${v}` : "已清除加速节点，将使用点对点");
 });
 
 $("#btn-copy").addEventListener("click", async () => {
@@ -445,10 +491,14 @@ $("#btn-next").addEventListener("click", async () => {
     return;
   }
   if (isDuoNet()) {
-    if (duoSession.role === "host") duoSession.localAction({ action: "next" });
-    else duoSession.sendAction({ action: "next" });
+    duoSend({ action: "next" });
   }
 });
 
 $(".mode-btn[data-mode='duo'] .mode-hint").textContent =
-  "点对点联机 · 无需开服务器 · 两名 AI";
+  "填加速节点可降延迟 · 两名 AI";
+
+(() => {
+  const input = $("#ws-url");
+  if (input) input.value = getWsUrl();
+})();
