@@ -1,6 +1,6 @@
 /** 联机节点：双方必须同一地址。线上默认走 Render（新加坡），免填表。 */
 
-export const DEFAULT_WS_URL = "wss://dazhong-mahjong.onrender.com";
+export const DEFAULT_WS_URL = "wss://dazhong-mahjong-dwkm.onrender.com";
 
 const KEY = "mahjong_ws_url";
 
