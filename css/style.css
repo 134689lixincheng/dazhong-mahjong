@@ -10,10 +10,12 @@
   /* 横屏一手一排：手牌参考欢乐麻将放大，对手/弃牌保持较小 */
   --tile-w: clamp(44px, 5.8vw, 72px);
   --tile-h: calc(var(--tile-w) * 1.38);
-  --tile-sm-w: clamp(22px, 2.5vw, 34px);
+  --tile-sm-w: clamp(28px, 3.2vw, 44px);
   --tile-sm-h: calc(var(--tile-sm-w) * 1.38);
-  --tile-xs-w: clamp(16px, 1.9vw, 26px);
+  --tile-xs-w: clamp(22px, 2.4vw, 34px);
   --tile-xs-h: calc(var(--tile-xs-w) * 1.38);
+  --tile-discard-w: clamp(32px, 3.6vw, 48px);
+  --tile-discard-h: calc(var(--tile-discard-w) * 1.38);
   --tile-hand-w: clamp(52px, 6.8vw, 88px);
   --tile-hand-h: calc(var(--tile-hand-w) * 1.38);
 }
@@ -635,6 +637,7 @@ body {
 .discard-row {
   overflow-x: auto;
   scrollbar-width: thin;
+  gap: 3px;
 }
 
 /* TOP：整排旋转 180° */
@@ -738,21 +741,26 @@ body {
 }
 
 .discard-row .mj-tile,
+.discard-row .mj-tile.mj-xs,
+.discard-row .mj-tile.mj-sm {
+  width: var(--tile-discard-w);
+  height: var(--tile-discard-h);
+}
+
 .meld-row .mj-tile,
 .hand-row:not(.self) .mj-tile {
   width: var(--tile-sm-w);
   height: var(--tile-sm-h);
 }
 
-.meld-row .mj-tile.mj-xs,
-.discard-row .mj-tile.mj-xs {
+.meld-row .mj-tile.mj-xs {
   width: var(--tile-xs-w);
   height: var(--tile-xs-h);
 }
 
 .last-discard .mj-tile {
-  width: calc(var(--tile-w) * 1.15);
-  height: calc(var(--tile-h) * 1.15);
+  width: calc(var(--tile-discard-w) * 1.35);
+  height: calc(var(--tile-discard-h) * 1.35);
   animation: drop-in 0.25s ease;
 }
 
@@ -823,8 +831,9 @@ body {
   :root {
     --tile-w: clamp(48px, 5.2vw, 70px);
     --tile-hand-w: clamp(60px, 6.8vw, 92px);
-    --tile-sm-w: clamp(24px, 2.4vw, 36px);
-    --tile-xs-w: clamp(18px, 1.8vw, 26px);
+    --tile-sm-w: clamp(30px, 3vw, 42px);
+    --tile-xs-w: clamp(24px, 2.2vw, 34px);
+    --tile-discard-w: clamp(36px, 3.8vw, 52px);
   }
 
   .table-compass {
