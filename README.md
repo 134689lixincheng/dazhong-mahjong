@@ -34,6 +34,10 @@ node scripts/verify-duo.mjs ws://127.0.0.1:5173
 
 ## 改进日志
 
+### 2026-08-21（弃牌放大）
+
+- 打出的牌单独加大（`--tile-discard-w`），中心刚出的牌再略大一截
+
 ### 2026-08-21（手牌放大）
 
 - 参考欢乐麻将：自己手牌加大（约 `6.8vw`，末张摸进略分开），底栏通栏排开
@@ -60,6 +64,7 @@ node scripts/verify-duo.mjs ws://127.0.0.1:5173
 
 | 日期 | 项目 | 结果 | 备注 |
 |------|------|------|------|
+| 2026-08-21 | 弃牌放大 CSS | ✅ | discard ~32–48px 宽，last-discard ×1.35 |
 | 2026-08-21 | 手牌放大（1280×720） | ✅ | 手牌约 79–88×110+，底栏通栏无横向滚动条 |
 | 2026-08-21 | `verify-duo.mjs` → `wss://dazhong-mahjong-dwkm.onrender.com` | ✅ PASS | create `BXG8T` + join seat 2 |
 | 2026-08-21 | 单人 `createLocalSolo` | ✅ PASS | `phase=draw`，手牌 13 |
