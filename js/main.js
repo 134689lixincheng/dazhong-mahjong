@@ -187,7 +187,7 @@ function render() {
     $(".meld-row", el).innerHTML = (p.melds || [])
       .flatMap((m) => m.tiles.map((t) => tileHTML(t, { size: "xs" })))
       .join("");
-    fillRow($(".discard-row", el), p.discards, { size: "xs" });
+    fillRow($(".discard-row", el), p.discards, { size: "sm" });
 
     const hand = $(".hand-row", el);
     const isSelf = screen === 0;
