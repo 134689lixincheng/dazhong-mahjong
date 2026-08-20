@@ -1,22 +1,17 @@
-/** 联机：线上默认点对点；本机 npm start 时自动用同源 WebSocket。也可用 ?ws= 指定节点。 */
+/** 联机节点：双方必须同一地址。线上默认走 Render（新加坡），免填表。 */
 
-export const DEFAULT_WS_URL = "";
+export const DEFAULT_WS_URL = "wss://dazhong-mahjong.onrender.com";
 
 const KEY = "mahjong_ws_url";
 
 export function getWsUrl() {
   const q = new URLSearchParams(location.search).get("ws");
-  if (q) {
-    try {
-      localStorage.setItem(KEY, q);
-    } catch {}
-    return normalizeWs(q);
-  }
+  if (q) return normalizeWs(q);
+  if (DEFAULT_WS_URL) return normalizeWs(DEFAULT_WS_URL);
   try {
     const saved = localStorage.getItem(KEY);
     if (saved) return normalizeWs(saved);
   } catch {}
-  if (DEFAULT_WS_URL) return normalizeWs(DEFAULT_WS_URL);
   return "";
 }
 
@@ -51,7 +46,24 @@ export function isLikelyStaticHost() {
     location.hostname.includes("vercel.app") ||
     location.hostname.includes("github.io") ||
     location.hostname.includes("jsdelivr.net") ||
-    location.hostname.includes("onrender.com") ||
     location.protocol === "file:"
   );
+}
+
+/** 唤醒免费实例（Render 休眠后首次要等一会） */
+export async function wakeRelay(wsUrl = getWsUrl()) {
+  if (!wsUrl) return false;
+  const http = wsUrl.replace(/^wss:/i, "https:").replace(/^ws:/i, "http:");
+  try {
+    await fetch(http + "/", { mode: "no-cors", cache: "no-store" });
+  } catch {}
+  // 再探活（有 CORS 时能拿到状态）
+  for (let i = 0; i < 20; i++) {
+    try {
+      const r = await fetch(http + "/", { cache: "no-store" });
+      if (r.ok || r.status === 404) return true;
+    } catch {}
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  return false;
 }
