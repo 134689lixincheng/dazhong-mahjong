@@ -5,7 +5,7 @@
  */
 
 /** 部署好免费节点后写在这里，例如 "wss://dazhong-mahjong.onrender.com" */
-export const DEFAULT_WS_URL = "";
+export const DEFAULT_WS_URL = "wss://dazhong-mahjong.onrender.com";
 
 const KEY = "mahjong_ws_url";
 
