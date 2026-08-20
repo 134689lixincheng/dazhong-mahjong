@@ -13,21 +13,18 @@
 
 后台：https://dazhong-mahjong.vercel.app/admin （默认密码 `8888`）
 
-## 国内延迟 / 反代
+## 国内延迟（没有 VPS）
 
-Vercel + PeerJS 信令都在国外，大陆访问会慢。可选：
+不用买服务器。用 **Render 免费档 · 新加坡** 即可：
 
-1. **香港/国内 VPS（推荐）**  
-   - 服务器上运行 `npm start`  
-   - 用 Nginx 反代（见 `deploy/nginx-china.conf`）  
-   - 大厅填写加速节点：`wss://你的域名`（双方相同）  
-   - 也可：`https://dazhong-mahjong.vercel.app/?ws=wss://你的域名`
+1. 打开一键部署（用 GitHub 登录）：  
+   https://render.com/deploy?repo=https://github.com/134689lixincheng/dazhong-mahjong
+2. 等部署完成，复制网站地址，把 `https://` 改成 `wss://`  
+   例如：`wss://dazhong-mahjong-xxxx.onrender.com`
+3. 在游戏大厅「加速节点」里填入并保存（双方填同一个）  
+   或把地址发给我，我可以写成网站默认节点
 
-2. **Render 新加坡一键部署**  
-   - 连接本仓库，使用根目录 `render.yaml`（region: singapore）  
-   - 部署后把 `wss://xxx.onrender.com` 填进加速节点
-
-整站都跑在同一台近端机器上延迟最低（不必再用 Vercel）。
+说明：Render 免费实例会休眠，久不用首次连接可能要等几十秒唤醒。
 
 ## 本地运行
 

@@ -1,4 +1,11 @@
-/** 联机节点：WebSocket 服（香港/国内反代后可填）优先于 PeerJS */
+/** 联机节点：WebSocket 服优先于 PeerJS
+ *
+ * 没有 VPS 时：用 Render 免费新加坡节点（见 README），把地址填到 DEFAULT_WS_URL
+ * 或大厅「加速节点」，或 ?ws=wss://xxx
+ */
+
+/** 部署好免费节点后写在这里，例如 "wss://dazhong-mahjong.onrender.com" */
+export const DEFAULT_WS_URL = "";
 
 const KEY = "mahjong_ws_url";
 
@@ -14,6 +21,7 @@ export function getWsUrl() {
     const saved = localStorage.getItem(KEY);
     if (saved) return normalizeWs(saved);
   } catch {}
+  if (DEFAULT_WS_URL) return normalizeWs(DEFAULT_WS_URL);
   return "";
 }
 
