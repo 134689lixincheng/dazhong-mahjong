@@ -300,22 +300,36 @@ export function createDuoGuest({ code, name, onState, onLobby, onError }) {
       peer.on("open", resolve);
       peer.on("error", reject);
     });
-    conn = peer.connect(peerIdHost, { reliable: true });
-    await new Promise((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error("连接房间超时，请确认房间码")), 12000);
-      conn.on("open", () => {
-        clearTimeout(t);
-        resolve();
-      });
-      conn.on("error", (e) => {
-        clearTimeout(t);
-        reject(e);
-      });
-      peer.on("error", (e) => {
-        clearTimeout(t);
-        reject(e);
-      });
-    });
+    let lastErr;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        conn = peer.connect(peerIdHost, { reliable: true, serialization: "json" });
+        await new Promise((resolve, reject) => {
+          const t = setTimeout(() => reject(new Error("连接房间超时，请确认房主在线且房间码正确")), 10000);
+          conn.on("open", () => {
+            clearTimeout(t);
+            resolve();
+          });
+          conn.on("error", (e) => {
+            clearTimeout(t);
+            reject(e);
+          });
+          peer.on("error", (e) => {
+            clearTimeout(t);
+            reject(e);
+          });
+        });
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        try {
+          conn?.close();
+        } catch {}
+        await sleep(800);
+      }
+    }
+    if (lastErr) throw lastErr;
     conn.on("data", (msg) => {
       if (msg?.type === "room") onLobby?.(msg.room, msg.seat ?? 2);
       if (msg?.type === "state") onState?.(msg.state, msg.room, msg.seat ?? 2);
