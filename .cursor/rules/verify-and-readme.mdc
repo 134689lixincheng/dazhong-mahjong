@@ -1,0 +1,13 @@
+---
+description: After features, self-verify and update README changelog
+alwaysApply: true
+---
+
+# 验证与 README
+
+完成任何可感知功能或联机相关改动后，必须：
+
+1. **自测**：能跑脚本就跑（如 `node scripts/verify-duo.mjs`）；能开本机 `npm start` 就用浏览器点一遍创建/加入或单人开桌。
+2. **记结果**：把通过/失败写进 `README.md` 的「验证记录」表（日期、项目、结果、备注）。
+3. **记改进**：把本次改动要点追加到 `README.md` 的「改进日志」（用户可读，不要只写 commit）。
+4. **失败如实写**：外网超时、Render 休眠等也要记，不要假装测过。
