@@ -187,10 +187,11 @@ function render() {
     $(".meld-row", el).innerHTML = (p.melds || [])
       .flatMap((m) => m.tiles.map((t) => tileHTML(t, { size: "xs" })))
       .join("");
-    fillRow($(".discard-row", el), p.discards, { size: "sm" });
+
+    const isSelf = screen === 0;
+    fillRow($(".discard-row", el), p.discards, { size: isSelf ? "sm" : "xs" });
 
     const hand = $(".hand-row", el);
-    const isSelf = screen === 0;
     const canClick =
       isSelf &&
       state.phase === "discard" &&
