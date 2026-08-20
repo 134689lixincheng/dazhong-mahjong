@@ -1,11 +1,6 @@
-/** 联机节点：WebSocket 服优先于 PeerJS
- *
- * 没有 VPS 时：用 Render 免费新加坡节点（见 README），把地址填到 DEFAULT_WS_URL
- * 或大厅「加速节点」，或 ?ws=wss://xxx
- */
+/** 联机：线上默认点对点；本机 npm start 时自动用同源 WebSocket。也可用 ?ws= 指定节点。 */
 
-/** 部署好免费节点后写在这里，例如 "wss://dazhong-mahjong.onrender.com" */
-export const DEFAULT_WS_URL = "wss://dazhong-mahjong.onrender.com";
+export const DEFAULT_WS_URL = "";
 
 const KEY = "mahjong_ws_url";
 
@@ -46,7 +41,6 @@ function normalizeWs(url) {
   return u.replace(/\/$/, "");
 }
 
-/** 本机打开 local-server 时，默认同源 WebSocket */
 export function sameOriginWs() {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   return `${proto}//${location.host}`;
@@ -57,6 +51,7 @@ export function isLikelyStaticHost() {
     location.hostname.includes("vercel.app") ||
     location.hostname.includes("github.io") ||
     location.hostname.includes("jsdelivr.net") ||
+    location.hostname.includes("onrender.com") ||
     location.protocol === "file:"
   );
 }
