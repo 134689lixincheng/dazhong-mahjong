@@ -14,7 +14,7 @@
 | 双人 | 选双人 → **创建房间** → 把房间码发给队友 → **加入** → 双方点「准备」 |
 | 后台 | [/admin](https://dazhong-mahjong.vercel.app/admin)（密码 `8888`） |
 
-不用手动 `npm start`。双人会先连云端联机服，失败则自动改用点对点。
+不用手动 `npm start`。双人默认连 `wss://dazhong-mahjong-dwkm.onrender.com`，失败则自动改用点对点。
 
 ## 本地运行（可选）
 
@@ -34,6 +34,11 @@ node scripts/verify-duo.mjs ws://127.0.0.1:5173
 
 ## 改进日志
 
+### 2026-08-21（更新联机节点）
+
+- 默认 WSS 改为 `wss://dazhong-mahjong-dwkm.onrender.com`
+- 自测：对该地址 create + join **PASS**
+
 ### 2026-08-21（联机进不去 / 自测规范）
 
 - **根因**：默认联机地址与点对点混用，双方可能不在同一通道；且本机也被误指到云端。
@@ -50,14 +55,15 @@ node scripts/verify-duo.mjs ws://127.0.0.1:5173
 
 | 日期 | 项目 | 结果 | 备注 |
 |------|------|------|------|
+| 2026-08-21 | `verify-duo.mjs` → `wss://dazhong-mahjong-dwkm.onrender.com` | ✅ PASS | create `BXG8T` + join seat 2 |
 | 2026-08-21 | 单人 `createLocalSolo` | ✅ PASS | `phase=draw`，手牌 13 |
 | 2026-08-21 | `verify-duo.mjs` → `ws://127.0.0.1:5173` | ✅ PASS | create + join seat 2 |
 | 2026-08-21 | 浏览器本机：创建房间 | ✅ PASS | 等待室出现房间码 |
 | 2026-08-21 | 浏览器房主 + 脚本加入 | ✅ PASS | 双方 `online=true` |
-| 2026-08-21 | `https://dazhong-mahjong.onrender.com` | ❌ 超时 | 本机网络 90s 无响应；需在 Render 控制台确认服务为 Live |
-| 2026-08-21 | Vercel 站点（本机 curl） | ❌ 超时 | 浏览器侧此前可打开；以 Vercel 控制台为准 |
+| 2026-08-21 | `https://dazhong-mahjong.onrender.com`（旧） | ❌ 超时 | 已弃用 |
+| 2026-08-21 | Vercel 站点（本机 curl） | ❌ 超时 | 浏览器侧可打开；以 Vercel 控制台为准 |
 
-> 若队友仍进不去：双方强制刷新同一网站；房主先创建并保持等待室；确认 Render 若已部署则处于未休眠状态。本机联机链路已验证正常。
+> 双方强制刷新 https://dazhong-mahjong.vercel.app 后再试双人。
 
 ## 结构说明
 
