@@ -1,0 +1,1 @@
+﻿Tiles from https://github.com/lietxia/mahjong_graphic (default vertical style). License: M+ FONT LICENSE.

@@ -1,0 +1,12 @@
+node_modules/
+.vercel/
+.DS_Store
+*.log
+.env
+.env.*
+assets/cells/
+assets/cells2/
+assets/mahjong-sheet*.png
+assets/tree.json
+assets/try*.png
+assets/mahjong-full.png
