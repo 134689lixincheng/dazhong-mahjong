@@ -25,21 +25,11 @@
           </button>
           <button type="button" class="mode-btn" data-mode="duo">
             <span class="mode-name">双人异地组队</span>
-            <span class="mode-hint">填加速节点可降延迟 · 两名 AI</span>
+            <span class="mode-hint">创建房间，发给队友 · 两名 AI</span>
           </button>
         </div>
 
         <div id="duo-panel" class="duo-panel hidden">
-          <label class="nick-field ws-field">
-            加速节点（可选）
-            <input id="ws-url" type="url" placeholder="wss://xxx.onrender.com" autocomplete="off" />
-          </label>
-          <p class="ws-hint">
-            没有自己的服务器也行：用免费
-            <a href="https://render.com/deploy?repo=https://github.com/134689lixincheng/dazhong-mahjong" target="_blank" rel="noopener">Render 新加坡一键部署</a>
-            ，把得到的地址填到这里（双方相同）。留空则用点对点（可能较慢）。
-          </p>
-          <button type="button" id="btn-save-ws" class="btn-ghost" style="width:100%;margin-bottom:0.75rem">保存节点</button>
           <button type="button" id="btn-create" class="btn-primary">创建房间</button>
           <div class="or-line">或加入好友房间</div>
           <div class="join-row">
@@ -58,7 +48,7 @@
       <div class="lobby-bg" aria-hidden="true"></div>
       <div class="lobby-card">
         <p class="brand">房间 <span id="wait-code"></span></p>
-        <p class="lobby-desc">把房间码发给队友；若填写了加速节点，请确保双方节点地址相同</p>
+        <p class="lobby-desc">把房间码发给队友，双方点准备即可开局</p>
         <ul id="wait-list" class="wait-list"></ul>
         <button type="button" id="btn-ready" class="btn-primary">准备</button>
         <button type="button" id="btn-copy" class="btn-ghost" style="width:100%;margin-top:0.5rem">复制房间码</button>
