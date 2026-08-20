@@ -372,8 +372,6 @@ $("#btn-start-solo").addEventListener("click", async () => {
 
 $("#btn-create").addEventListener("click", async () => {
   setErr("");
-  const input = $("#ws-url");
-  if (input) setWsUrl(input.value);
   try {
     localSession = null;
     duoSession?.destroy();
@@ -406,8 +404,6 @@ $("#btn-create").addEventListener("click", async () => {
 
 $("#btn-join").addEventListener("click", async () => {
   setErr("");
-  const input = $("#ws-url");
-  if (input) setWsUrl(input.value);
   const code = $("#room-code").value.trim();
   if (!code) {
     setErr("请输入房间码");
@@ -447,11 +443,6 @@ $("#btn-join").addEventListener("click", async () => {
 $("#btn-ready").addEventListener("click", () => {
   if (!duoSession) return;
   duoSession.setReady(nick());
-});
-
-$("#btn-save-ws")?.addEventListener("click", () => {
-  const v = setWsUrl($("#ws-url")?.value || "");
-  setErr(v ? `已保存加速节点：${v}` : "已清除加速节点，将使用点对点");
 });
 
 $("#btn-copy").addEventListener("click", async () => {
@@ -495,10 +486,4 @@ $("#btn-next").addEventListener("click", async () => {
   }
 });
 
-$(".mode-btn[data-mode='duo'] .mode-hint").textContent =
-  "填加速节点可降延迟 · 两名 AI";
-
-(() => {
-  const input = $("#ws-url");
-  if (input) input.value = getWsUrl();
-})();
+$(".mode-btn[data-mode='duo'] .mode-hint").textContent = "创建房间，发给队友 · 两名 AI";
