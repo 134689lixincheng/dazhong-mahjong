@@ -4,6 +4,24 @@
 
 牌面素材：[lietxia/mahjong_graphic](https://github.com/lietxia/mahjong_graphic)
 
+## 进度快照（2026-08-21 收工）
+
+明日可直接说「接着昨天麻将」继续。
+
+| 项 | 状态 |
+|----|------|
+| 线上 | https://dazhong-mahjong.vercel.app |
+| 后台 | `/admin`，密码 `8888` |
+| 联机节点 | `wss://dazhong-mahjong-dwkm.onrender.com`（已自测 PASS） |
+| 单人 | 纯前端，可玩 |
+| 双人 | 默认走 Render；失败回退 PeerJS；本机 `npm start` 走同源 |
+| 手牌 | 已放大（参考欢乐麻将） |
+| 弃牌 | **仅自己**放大 + 换行；其余三人小尺寸 |
+| 自测约定 | 改完要测，结果写「验证记录」；改进写「改进日志」 |
+| 仓库 | https://github.com/134689lixincheng/dazhong-mahjong |
+
+可选后续：牌桌更接近欢乐麻将透视、Render 休眠体验、AI/规则细化。
+
 ## 怎么玩
 
 打开 https://dazhong-mahjong.vercel.app
