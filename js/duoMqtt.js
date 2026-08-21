@@ -11,7 +11,11 @@ export function isMqttCode(code) {
   return String(code || "").trim().startsWith(MQTT_CODE_PREFIX);
 }
 
-const BROKERS = ["wss://broker-cn.emqx.io:8084/mqtt", "wss://broker.emqx.io:8084/mqtt"];
+const BROKERS = [
+  "wss://broker-cn.emqx.io:8084/mqtt",
+  "wss://broker.emqx.io:8084/mqtt",
+  "wss://test.mosquitto.org:8081/mqtt",
+];
 
 let mqttLib = null;
 
@@ -21,16 +25,30 @@ async function loadMqtt() {
     mqttLib = globalThis.mqtt;
     return mqttLib;
   }
-  await new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = new URL("../vendor/mqtt.min.js", import.meta.url).href;
-    s.onload = resolve;
-    s.onerror = () => reject(new Error("联机组件加载失败"));
-    document.head.appendChild(s);
-  });
-  mqttLib = globalThis.mqtt;
-  if (!mqttLib) throw new Error("联机组件未就绪");
-  return mqttLib;
+  const sources = [
+    new URL("../vendor/mqtt.min.js", import.meta.url).href,
+    "https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js",
+    "https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js",
+  ];
+  let lastErr;
+  for (const src of sources) {
+    try {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error("load"));
+        document.head.appendChild(s);
+      });
+      if (globalThis.mqtt) {
+        mqttLib = globalThis.mqtt;
+        return mqttLib;
+      }
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("联机组件未就绪");
 }
 
 function makeCode() {
