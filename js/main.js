@@ -46,24 +46,20 @@ function isDuoNet() {
   return Boolean(duoSession);
 }
 
-/** 建房默认公共中继（国内可直连）。?ws= 自建节点，?local=1 本机服，?p2p=1 点对点 */
+/** 建房：默认国内 MQTT 中继；?ws= 才走自建节点；?p2p= 才走点对点 */
 function resolveDuoTransport() {
   const params = new URLSearchParams(location.search);
+  if (params.get("ws")) return { kind: "ws", url: getWsUrl() || sameOriginWs() };
   if (params.get("p2p")) return { kind: "p2p" };
-  if (params.get("ws")) return { kind: "ws", url: getWsUrl() };
-  if (params.get("local")) return { kind: "ws", url: sameOriginWs() };
   return { kind: "mqtt" };
 }
 
-/** 加入通道：房间码前缀决定，双方永远走同一条路 */
+/** 加入：房间码前缀决定通道，避免双方走两条路 */
 function resolveJoinTransport(code) {
   if (isMqttCode(code)) return { kind: "mqtt" };
   if (isP2pCode(code)) return { kind: "p2p" };
   const params = new URLSearchParams(location.search);
-  if (params.get("ws")) return { kind: "ws", url: getWsUrl() };
-  if (!isLikelyStaticHost()) return { kind: "ws", url: sameOriginWs() };
-  const cloud = getWsUrl();
-  if (cloud) return { kind: "ws", url: cloud };
+  if (params.get("ws")) return { kind: "ws", url: getWsUrl() || sameOriginWs() };
   return { kind: "mqtt" };
 }
 
@@ -476,8 +472,8 @@ $("#btn-create").addEventListener("click", async () => {
         showWaiting();
         return;
       } catch (e) {
-        console.warn("mqtt create failed, fallback p2p", e);
-        setErr("中继不可用，改用点对点…");
+        console.warn("mqtt create failed", e);
+        throw e;
       }
     }
     duoSession = await startDuoAsP2p({ mode: "create" });
