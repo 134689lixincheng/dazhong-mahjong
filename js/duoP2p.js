@@ -48,9 +48,16 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** 点对点房间码以 0 开头（服务端房间码不含 0），队友据此直连房主，不会走错通道 */
+export const P2P_CODE_PREFIX = "0";
+
+export function isP2pCode(code) {
+  return String(code || "").trim().startsWith(P2P_CODE_PREFIX);
+}
+
 function makeCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let s = "";
+  let s = P2P_CODE_PREFIX;
   for (let i = 0; i < 5; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
 }

@@ -4,23 +4,14 @@
 
 牌面素材：[lietxia/mahjong_graphic](https://github.com/lietxia/mahjong_graphic)
 
-## 进度快照（2026-08-21 收工）
-
-明日可直接说「接着昨天麻将」继续。
+## 进度快照（2026-08-21）
 
 | 项 | 状态 |
 |----|------|
 | 线上 | https://dazhong-mahjong.vercel.app |
-| 后台 | `/admin`，密码 `8888` |
-| 联机节点 | `wss://dazhong-mahjong-dwkm.onrender.com`（已自测 PASS） |
-| 单人 | 纯前端，可玩 |
-| 双人 | 默认走 Render；失败回退 PeerJS；本机 `npm start` 走同源 |
-| 手牌 | 已放大（参考欢乐麻将） |
-| 弃牌 | **仅自己**放大 + 换行；其余三人小尺寸 |
-| 自测约定 | 改完要测，结果写「验证记录」；改进写「改进日志」 |
-| 仓库 | https://github.com/134689lixincheng/dazhong-mahjong |
-
-可选后续：牌桌更接近欢乐麻将透视、Render 休眠体验、AI/规则细化。
+| 双人 | **默认国内 MQTT 中继**（`broker-cn.emqx.io`），不用 Render、不用唤醒 |
+| 房间码 | 以 `1` 开头 = 公共中继；以 `0` 开头 = 点对点 |
+| 手牌 / 弃牌 | 自己手牌和自己弃牌放大；对手弃牌小、会换行 |
 
 ## 怎么玩
 
@@ -32,7 +23,7 @@
 | 双人 | 选双人 → **创建房间** → 把房间码发给队友 → **加入** → 双方点「准备」 |
 | 后台 | [/admin](https://dazhong-mahjong.vercel.app/admin)（密码 `8888`） |
 
-不用手动 `npm start`。双人默认连 `wss://dazhong-mahjong-dwkm.onrender.com`，失败则自动改用点对点。
+不用手动 `npm start`。双人默认走国内公共中继，创建房间即可，**不用填地址、不用先打开 Render**。
 
 ## 本地运行（可选）
 
@@ -51,6 +42,12 @@ node scripts/verify-duo.mjs ws://127.0.0.1:5173
 ```
 
 ## 改进日志
+
+### 2026-08-21（国内联机）
+
+- 默认不再走 Render（国外、会休眠）。双人改用 EMQX 国内 MQTT（`broker-cn.emqx.io`）
+- 房间码以 `1` 开头锁定中继通道，避免房主/队友走两条路
+- 本机浏览器实测：创建 `1RHXZP`，第二标签加入，双方「在线」
 
 ### 2026-08-21（弃牌分区）
 
@@ -87,6 +84,9 @@ node scripts/verify-duo.mjs ws://127.0.0.1:5173
 
 | 日期 | 项目 | 结果 | 备注 |
 |------|------|------|------|
+| 2026-08-21 | 国内 MQTT 建房+加入（本机双标签） | ✅ | 房间 `1RHXZP`，双方在线 |
+| 2026-08-21 | `wss://broker-cn.emqx.io:8084/mqtt` | ✅ | 本机 OPEN |
+| 2026-08-21 | Render 默认节点（国内） | ❌ | 休眠/超时；已不再作为默认 |
 | 2026-08-21 | 弃牌：仅自己放大 + 换行 | ✅ | 底家 discard 大牌；上/左/右 xs；flex-wrap |
 | 2026-08-21 | 弃牌放大 CSS | ✅ | discard ~32–48px 宽，last-discard ×1.35 |
 | 2026-08-21 | 手牌放大（1280×720） | ✅ | 手牌约 79–88×110+，底栏通栏无横向滚动条 |

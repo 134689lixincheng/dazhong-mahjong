@@ -2,12 +2,24 @@
  * WebSocket 双人联机（对接 local-server.mjs / Render）
  */
 
-export function createDuoWs({ url, onLobby, onState, onError, quick = false }) {
+export function createDuoWs({ url, onLobby, onState, onError, onStatus }) {
   let ws = null;
   let closed = false;
+  let keepAlive = null;
 
   function send(msg) {
     if (ws?.readyState === 1) ws.send(JSON.stringify(msg));
+  }
+
+  /** 对局期间定期发包，免费实例就不会中途休眠 */
+  function startKeepAlive() {
+    stopKeepAlive();
+    keepAlive = setInterval(() => send({ type: "ping" }), 240000);
+  }
+
+  function stopKeepAlive() {
+    if (keepAlive) clearInterval(keepAlive);
+    keepAlive = null;
   }
 
   function connectOnce(timeoutMs) {
@@ -60,16 +72,16 @@ export function createDuoWs({ url, onLobby, onState, onError, quick = false }) {
   }
 
   async function connect() {
-    const attempts = quick ? 2 : 4;
-    const timeout = quick ? 12000 : 22000;
     let lastErr;
-    for (let i = 0; i < attempts; i++) {
+    for (let i = 0; i < 3; i++) {
       try {
-        await connectOnce(timeout);
+        await connectOnce(10000);
+        startKeepAlive();
         return;
       } catch (e) {
         lastErr = e;
-        await new Promise((r) => setTimeout(r, quick ? 800 : 2000));
+        onStatus?.(`正在重试连接…（${i + 1}/3）`);
+        await new Promise((r) => setTimeout(r, 1200));
       }
     }
     throw lastErr || new Error("无法连接联机服务，请稍后重试");
@@ -96,6 +108,7 @@ export function createDuoWs({ url, onLobby, onState, onError, quick = false }) {
     },
     destroy() {
       closed = true;
+      stopKeepAlive();
       try {
         send({ type: "leave" });
       } catch {}

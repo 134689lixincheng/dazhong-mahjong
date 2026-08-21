@@ -1,6 +1,9 @@
-/** 联机节点：双方必须同一地址。线上默认走 Render（新加坡），免填表。 */
+/**
+ * 联机节点：默认留空，线上走公共 MQTT 中继（国内可直连、无冷启动）。
+ * 有自建/免费节点时用 ?ws=wss://... 指定，双方需填同一地址。
+ */
 
-export const DEFAULT_WS_URL = "wss://dazhong-mahjong-dwkm.onrender.com";
+export const DEFAULT_WS_URL = "";
 
 const KEY = "mahjong_ws_url";
 
@@ -51,18 +54,23 @@ export function isLikelyStaticHost() {
 }
 
 /** 唤醒免费实例（Render 休眠后首次要等一会） */
-export async function wakeRelay(wsUrl = getWsUrl()) {
+export function httpFromWs(wsUrl) {
+  return String(wsUrl || "")
+    .replace(/^wss:/i, "https:")
+    .replace(/^ws:/i, "http:");
+}
+
+/** Render 免费档冷启动约 30–60 秒，所以一直探活到 maxMs，并播报进度 */
+export async function wakeRelay(wsUrl = getWsUrl(), { maxMs = 90000, onProgress } = {}) {
   if (!wsUrl) return false;
-  const http = wsUrl.replace(/^wss:/i, "https:").replace(/^ws:/i, "http:");
-  try {
-    await fetch(http + "/", { mode: "no-cors", cache: "no-store" });
-  } catch {}
-  // 再探活（有 CORS 时能拿到状态）
-  for (let i = 0; i < 20; i++) {
+  const http = httpFromWs(wsUrl);
+  const start = Date.now();
+  while (Date.now() - start < maxMs) {
     try {
-      const r = await fetch(http + "/", { cache: "no-store" });
+      const r = await fetch(`${http}/?probe=${Date.now()}`, { cache: "no-store" });
       if (r.ok || r.status === 404) return true;
     } catch {}
+    onProgress?.(Math.round((Date.now() - start) / 1000));
     await new Promise((r) => setTimeout(r, 1500));
   }
   return false;

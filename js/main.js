@@ -10,7 +10,12 @@ import {
   localJiaGang,
   localNext,
 } from "./localSolo.js";
-import { createDuoHost, createDuoGuest } from "./duoP2p.js";
+import { createDuoHost, createDuoGuest, isP2pCode } from "./duoP2p.js";
+import {
+  createDuoHost as createMqttHost,
+  createDuoGuest as createMqttGuest,
+  isMqttCode,
+} from "./duoMqtt.js";
 import { createDuoWs } from "./duoWs.js";
 import { getWsUrl, sameOriginWs, isLikelyStaticHost, wakeRelay } from "./netConfig.js";
 import { getBlunderRate } from "./aiConfig.js";
@@ -41,14 +46,25 @@ function isDuoNet() {
   return Boolean(duoSession);
 }
 
-/** 有 ?ws= → 指定节点；本机开服 → 同源；线上 → 默认 Render；否则 PeerJS */
+/** 建房默认公共中继（国内可直连）。?ws= 自建节点，?local=1 本机服，?p2p=1 点对点 */
 function resolveDuoTransport() {
-  const q = new URLSearchParams(location.search).get("ws");
-  if (q) return { kind: "ws", url: getWsUrl() };
+  const params = new URLSearchParams(location.search);
+  if (params.get("p2p")) return { kind: "p2p" };
+  if (params.get("ws")) return { kind: "ws", url: getWsUrl() };
+  if (params.get("local")) return { kind: "ws", url: sameOriginWs() };
+  return { kind: "mqtt" };
+}
+
+/** 加入通道：房间码前缀决定，双方永远走同一条路 */
+function resolveJoinTransport(code) {
+  if (isMqttCode(code)) return { kind: "mqtt" };
+  if (isP2pCode(code)) return { kind: "p2p" };
+  const params = new URLSearchParams(location.search);
+  if (params.get("ws")) return { kind: "ws", url: getWsUrl() };
   if (!isLikelyStaticHost()) return { kind: "ws", url: sameOriginWs() };
   const cloud = getWsUrl();
   if (cloud) return { kind: "ws", url: cloud };
-  return { kind: "p2p" };
+  return { kind: "mqtt" };
 }
 
 function duoSend(payload) {
@@ -374,16 +390,43 @@ $("#btn-start-solo").addEventListener("click", async () => {
 });
 
 async function startDuoAsWs(url, { mode, code }) {
-  void wakeRelay(url);
+  // 免费实例休眠时冷启动要 30–60 秒，先等它醒再连，避免半路换通道
+  setErr("正在连接联机服务…");
+  const awake = await wakeRelay(url, {
+    maxMs: 50000,
+    onProgress: (sec) => setErr(`联机服务启动中…已等待 ${sec} 秒`),
+  });
+  if (!awake) throw new Error("联机服务未响应");
   const session = createDuoWs({
     url,
-    quick: true,
     onLobby: applyDuoLobby,
     onState: applyDuoState,
     onError: (m) => setErr(m),
+    onStatus: (m) => setErr(m),
   });
   if (mode === "create") await session.create(nick(), getBlunderRate());
   else await session.join(code, nick());
+  return session;
+}
+
+async function startDuoAsMqtt({ mode, code }) {
+  setErr(mode === "create" ? "正在创建房间…" : "正在加入房间…");
+  const session =
+    mode === "create"
+      ? createMqttHost({
+          name: nick(),
+          onLobby: applyDuoLobby,
+          onState: applyDuoState,
+          onError: (m) => setErr(m),
+        })
+      : createMqttGuest({
+          code,
+          name: nick(),
+          onLobby: applyDuoLobby,
+          onState: applyDuoState,
+          onError: (m) => setErr(m),
+        });
+  await session.start();
   return session;
 }
 
@@ -416,15 +459,25 @@ $("#btn-create").addEventListener("click", async () => {
     duoSession?.destroy();
     const t = resolveDuoTransport();
     if (t.kind === "ws") {
-      setErr("正在创建房间…");
       try {
         duoSession = await startDuoAsWs(t.url, { mode: "create" });
         setErr("");
         showWaiting();
         return;
       } catch (e) {
-        console.warn("ws create failed, fallback p2p", e);
-        setErr("云端联机暂不可用，改用点对点…");
+        console.warn("ws create failed, fallback relay", e);
+        setErr("指定节点不可用，改用公共中继…");
+      }
+    }
+    if (t.kind !== "p2p") {
+      try {
+        duoSession = await startDuoAsMqtt({ mode: "create" });
+        setErr("");
+        showWaiting();
+        return;
+      } catch (e) {
+        console.warn("mqtt create failed, fallback p2p", e);
+        setErr("中继不可用，改用点对点…");
       }
     }
     duoSession = await startDuoAsP2p({ mode: "create" });
@@ -447,18 +500,19 @@ $("#btn-join").addEventListener("click", async () => {
   try {
     localSession = null;
     duoSession?.destroy();
-    const t = resolveDuoTransport();
+    // 房间码前缀决定通道：1=公共中继，0=点对点，其余=指定服务器
+    const t = resolveJoinTransport(code);
+    if (t.kind === "mqtt") {
+      duoSession = await startDuoAsMqtt({ mode: "join", code });
+      setErr("");
+      showWaiting();
+      return;
+    }
     if (t.kind === "ws") {
-      setErr("正在加入…");
-      try {
-        duoSession = await startDuoAsWs(t.url, { mode: "join", code });
-        setErr("");
-        showWaiting();
-        return;
-      } catch (e) {
-        console.warn("ws join failed, fallback p2p", e);
-        setErr("云端加入失败，尝试点对点…");
-      }
+      duoSession = await startDuoAsWs(t.url, { mode: "join", code });
+      setErr("");
+      showWaiting();
+      return;
     }
     duoSession = await startDuoAsP2p({ mode: "join", code });
     setErr("");
@@ -518,10 +572,21 @@ $("#btn-next").addEventListener("click", async () => {
 
 $(".mode-btn[data-mode='duo'] .mode-hint").textContent = "创建房间，发给队友 · 两名 AI";
 
-// 打开大厅时预热联机服务（Render 免费机会休眠）
 try {
   localStorage.removeItem("mahjong_ws_url");
 } catch {}
-if (isLikelyStaticHost() && getWsUrl()) {
-  void wakeRelay();
+
+function setRelayStatus(text) {
+  const el = $("#relay-status");
+  if (el) el.textContent = text || "";
+}
+
+// 指定了自建节点才需要预热；默认公共中继无需唤醒
+if (getWsUrl()) {
+  setRelayStatus("联机服务准备中…（首次约 30–60 秒）");
+  void wakeRelay(getWsUrl(), { maxMs: 120000 }).then((ok) => {
+    setRelayStatus(ok ? "联机服务已就绪，可直接创建房间" : "联机服务未响应，将自动改用公共中继");
+  });
+} else {
+  setRelayStatus("");
 }
